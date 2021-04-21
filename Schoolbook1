@@ -1,0 +1,212 @@
+using System;
+using System.IO;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+
+namespace Schoolbook1
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Subject math = new Subject("math");
+            Teacher mathTeacher = new Teacher("lala", "lalala", math);
+            List<Student> listOsStud = new List<Student>();
+            List<Subject> listOsSubj = new List<Subject>();
+            listOsSubj.Add(math);
+            ClassOfStudents A11 = new ClassOfStudents("11A", listOsSubj, listOsStud);
+            Student N001 = new Student("blabla", "blablabla", A11);
+            Lesson Math_A11 = new Lesson(mathTeacher, A11);
+
+
+            Console.WriteLine("please, enter your username/surname");
+            string username = Console.ReadLine();
+            CurrentUser theUser = new CurrentUser();
+            while (!theUser.GetCurrentUser(username))
+            {
+                username = Console.ReadLine();
+            }
+            Console.WriteLine("if you are a teacher and want to write a mark, please push '1' and follow instructions.");
+            Console.WriteLine("if you are a Student and want to see a mark, please push '2' and follow instructions.");
+            string input = Console.ReadLine();
+            if (input == "1")
+            {
+                Console.WriteLine("Please enter the name of a student and a mark you wish to give them on separate lines");
+                string nameOfStudent = Console.ReadLine();
+                School.listOfLessons[username + nameOfStudent].WriteMark(nameOfStudent, int.Parse(Console.ReadLine()));
+                
+            }
+        }
+    }
+    
+    
+    public class ClassOfStudents
+{
+	public string NameOfClass { get; set; }
+
+	public ClassOfStudents(string className, List<Subject> subjects, List<Student> students)
+	{
+		NameOfClass = className;
+		listOfStudents = students;
+		listOfSubjects = subjects;
+		School.listOfClasses.Add(className, this); 
+	}
+	public List<Student> listOfStudents = new List<Student>();
+	public List<Subject> listOfSubjects = new List<Subject>();
+}
+
+public class CurrentUser:IDisposable
+{
+    public string UserName {get; private set;}
+
+    public bool GetCurrentUser(string username)
+    {
+        if(username==null) throw new ArgumentNullException();
+        Console.WriteLine("plese, enter the password");
+        string password = Console.ReadLine();
+        this.GetTypeOfAccount(username);
+        if (_isTeacher)
+        {
+            if (School.listOfTeachers[username].Password == password)
+            {
+                UserName = username;
+                _loggedIn = true;
+                Console.WriteLine("You logged in successfully");
+                return true;
+            }
+        }
+        if (!_isTeacher)
+        {
+            if (School.listOfStudents[username].Password == password)
+            {
+                UserName = username;
+                _loggedIn = true;
+                Console.WriteLine("You logged in successfully");
+                return true;
+            }
+        }
+        Console.WriteLine("incorrect user or password");
+        return false;
+    }
+    private void GetTypeOfAccount(string username)
+    {
+        if (School.listOfTeachers.ContainsKey(username)) _isTeacher = true;
+        else if (School.listOfStudents.ContainsKey(username)) _isTeacher = false;
+        else throw new Exception("Such username does not exist");
+    }
+    public void Dispose()
+    {
+        if (!_loggedIn) return;
+        UserName = default;
+        _loggedIn = false;
+    }
+
+    public bool _isTeacher;
+    private bool _loggedIn = false;
+
+}
+
+public class Lesson
+{
+	public Teacher TeacherPresent { get; private set; }
+	public ClassOfStudents ClassPresent { get; private set; }
+	public string NameOfLesson { get; private set; }
+
+	public Lesson(Teacher teacherPresent, ClassOfStudents classPresent)
+	{
+		TeacherPresent = teacherPresent;
+		ClassPresent = classPresent;
+		NameOfLesson = teacherPresent.Surname + classPresent.NameOfClass;
+		School.listOfLessons.Add(NameOfLesson, this);
+	}
+
+    public void WriteMark(string studentName, int mark)
+    {
+		Student presentStudent = (Student)ClassPresent.listOfStudents.Where(student => student.Surname == studentName);
+		presentStudent._mark.Add(TeacherPresent.TeacherSubject, mark);
+
+	} 
+	 
+}
+
+
+public static class School
+{
+	public static Dictionary<string,Teacher> listOfTeachers = new Dictionary<string, Teacher>();
+	public static Dictionary<string, ClassOfStudents> listOfClasses = new Dictionary<string, ClassOfStudents>();
+	public static Dictionary<string, Subject> listOfSubjects = new Dictionary<string, Subject>();
+	public static Dictionary<string, Student> listOfStudents = new Dictionary<string, Student>();
+	public static Dictionary<string, Lesson> listOfLessons = new Dictionary<string, Lesson>();
+}
+
+public class Student
+{
+	public string Name { get; private set; }
+	public string Surname { get; private set; }
+	public string Password { get; private set; }
+	public ClassOfStudents Classroom { get; private set; }
+
+	public Student(string name, string surname, ClassOfStudents classOfStudents)
+	{
+		Name = name;
+		Surname = surname;
+		Classroom = classOfStudents;
+		Password = Surname;
+	}
+
+	public int GetMark(string subjectName)
+	{
+		Subject presentSubject = (Subject)Classroom.listOfSubjects.Where(smth => smth.NameOfSubject == subjectName);
+		//no need for Dictionaries in School - can simply write List, but first check whole code for the errors this transaction might cause. 
+		return this._mark[presentSubject];
+	}
+	//private void ChangePassword(string currentPassword, string newPassword)
+	//{
+	//	if (currentPassword == Password) Password = newPassword;
+	//} - same as with teacher
+
+
+	public Dictionary<Subject, int> _mark = new Dictionary<Subject, int>();
+}
+
+public class Subject
+{
+    public string NameOfSubject { get; private set; }
+
+    public Subject(string nameOfSubject)
+    {
+        NameOfSubject = nameOfSubject;
+        School.listOfSubjects.Add(nameOfSubject, this);
+    }
+}
+
+
+public class Teacher
+{
+	public string Name { get; private set; }
+	public string Surname { get; private set; }
+	public string Password { get; private set; }
+	public Subject TeacherSubject{ get; private set; }
+
+	public Teacher(string name, string surname, Subject teacherSubject)
+	{
+		Name = name;
+		Surname = surname;
+		TeacherSubject = teacherSubject;
+		Password = surname;
+		School.listOfTeachers.Add(surname, this);
+	}
+
+	//private void ChangePassword(string currentPassword, string newPassword)
+    //{
+	//	if (currentPassword == Password) Password = newPassword;
+    //}
+
+	// try to make this class and class of Student (and future Administrator) CurrentUser's "children"(?)
+	// it will probably be better to change name of CurrentUser to User so that the connection is more logical
+	// make a list of (future) Users (will be User's private smth.) to determine which Users are logged in (much like the current system of identification, but improved)
+}
+
+    
+}
